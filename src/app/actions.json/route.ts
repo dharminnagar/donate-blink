@@ -5,7 +5,7 @@ export const GET = async () => {
         rules: [
             {
                 pathPattern: "/",
-                apiPath: "/api/actions/donate",
+                apiPath: "/api/action/donate",
             },
         ],
     };
