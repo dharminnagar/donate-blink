@@ -53,6 +53,7 @@ export async function POST(request: Request) {
             JSON.stringify({
                 error: {
                     message: "Invalid account",
+                    error,
                 },
             }),
             {
