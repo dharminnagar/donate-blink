@@ -31,7 +31,7 @@ export const GET = async (req: Request) => {
     const payload: ActionGetResponse = {
       type: "action",
       title: "Donate SOL to Alice",
-      icon: "https://ucarecdn.com/7aa46c85-08a4-4bc7-9376-88ec48bb1f43/-/preview/880x864/-/quality/smart/-/format/auto/",
+      icon: "https://i.imgur.com/XuAHlCk.jpeg",
       description: "Cybersecurity Enthusiast | Support my research with a donation.",
       label: "Transfer", // this value will be ignored since `links.actions` exists
       links: {
@@ -167,7 +167,7 @@ export const POST = async (req: Request) => {
 };
 
 function validatedQueryParams(requestUrl: URL) {
-  let toPubkey: PublicKey = new PublicKey("FWXHZxDocgchBjADAxSuyPCVhh6fNLT7DUggabAsuz1y");
+  let toPubkey: PublicKey = new PublicKey("DAhS7No6mzrxViz8CVUjMRVq7HjESMwEdbHa2gjPXogH");
   let amount: number = 0.1;
 
   try {
