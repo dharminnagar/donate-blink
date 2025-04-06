@@ -9,7 +9,7 @@ export const GET = async () => {
       },
       {
         pathPattern: "/",
-        apiPath: "/api/action/donate-spl",
+        apiPath: "/api/action/donate-sol",
       },
     ],
   };
