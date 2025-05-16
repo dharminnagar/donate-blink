@@ -54,7 +54,7 @@ export const GET = async (req: Request) => {
           {
             type: "transaction",
             label: "Send SOL", // button text
-            href: `${baseHref}&amount=${amount}`, // this href will have a text input
+            href: `${baseHref}&amount={amount}`, // this href will have a text input
             parameters: [
               {
                 name: "amount", // parameter name in the `href` above
