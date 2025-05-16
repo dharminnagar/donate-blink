@@ -1,195 +1,178 @@
-// @ts-ignore
-// @ts-nocheck
 import {
-  ActionPostResponse,
-  createPostResponse,
   ActionGetResponse,
   ActionPostRequest,
-  createActionHeaders,
+  ActionPostResponse,
+  ActionError,
+  ACTIONS_CORS_HEADERS,
+  BLOCKCHAIN_IDS,
 } from "@solana/actions";
+
 import {
-  clusterApiUrl,
   Connection,
-  LAMPORTS_PER_SOL,
   PublicKey,
+  LAMPORTS_PER_SOL,
   SystemProgram,
-  Transaction,
+  TransactionMessage,
+  VersionedTransaction,
+  clusterApiUrl,
 } from "@solana/web3.js";
 
-const headers = createActionHeaders();
+// CAIP-2 format for Solana
+const blockchain = BLOCKCHAIN_IDS.mainnet;
 
-export const GET = async (req: Request) => {
-  try {
-    const requestUrl = new URL(req.url);
-    const { toPubkey } = validatedQueryParams(requestUrl);
+// Create a connection to the Solana blockchain
+const connection = new Connection(process.env.SOLANA_RPC! || clusterApiUrl("mainnet-beta"));
 
-    const baseHref = new URL(
-      `/api/actions/donate-sol?to=${toPubkey.toBase58()}`,
-      requestUrl.origin
-    ).toString();
+// Set the donation wallet address
+const donationWallet = "DAhS7No6mzrxViz8CVUjMRVq7HjESMwEdbHa2gjPXogH";
 
-    const payload: ActionGetResponse = {
-      type: "action",
-      title: "Donate SOL to Dharmin",
-      icon: "https://i.imgur.com/XuAHlCk.jpeg",
-      description: "building in web3 | Support me with a donation.",
-      label: "Transfer", // this value will be ignored since `links.actions` exists
-      links: {
-        actions: [
-          {
-            type: "transaction",
-            label: "Send 0.001 SOL", // button text
-            href: `${baseHref}&amount=${"0.001"}`,
-          },
-          {
-            type: "transaction",
-            label: "Send 0.01 SOL", // button text
-            href: `${baseHref}&amount=${"0.01"}`,
-          },
-          {
-            type: "transaction",
-            label: "Send 0.1 SOL", // button text
-            href: `${baseHref}&amount=${"0.1"}`,
-          },
-          {
-            type: "transaction",
-            label: "Send SOL", // button text
-            href: `${baseHref}&amount={amount}`, // this href will have a text input
-            parameters: [
-              {
-                name: "amount", // parameter name in the `href` above
-                label: "Enter the amount of SOL to send", // placeholder of the text input
-                required: true,
-              },
-            ],
-          },
-        ],
-      },
-    };
-
-    return Response.json(payload, {
-      headers,
-    });
-  } catch (err) {
-    console.log(err);
-    let message = "An unknown error occurred";
-    if (typeof err == "string") message = err;
-    return new Response(message, {
-      status: 400,
-      headers,
-    });
-  }
+// Create headers with CAIP blockchain ID
+const headers = {
+  ...ACTIONS_CORS_HEADERS,
+  "x-blockchain-ids": blockchain,
+  "x-action-version": "2.4",
 };
 
-// DO NOT FORGET TO INCLUDE THE `OPTIONS` HTTP METHOD
-// THIS WILL ENSURE CORS WORKS FOR BLINKS
-export const OPTIONS = async (req: Request) => {
+// OPTIONS endpoint is required for CORS preflight requests
+// Your Blink won't render if you don't add this
+export const OPTIONS = async () => {
   return new Response(null, { headers });
 };
 
+// GET endpoint returns the Blink metadata (JSON) and UI configuration
+export const GET = async (req: Request) => {
+  // This JSON is used to render the Blink UI
+  const response: ActionGetResponse = {
+    type: "action",
+    icon: "https://i.imgur.com/XuAHlCk.jpeg",
+    label: "Transfer",
+    title: "Donate SOL to Dharmin",
+    description:
+      "building in web3 | Support me with a donation.",
+    // Links is used if you have multiple actions or if you need more than one params
+    links: {
+      actions: [
+        {
+          // Defines this as a blockchain transaction
+          type: "transaction",
+          label: "0.001 SOL",
+          // This is the endpoint for the POST request
+          href: `/api/actions/donate-sol?amount=0.001`,
+        },
+        {
+          type: "transaction",
+          label: "0.01 SOL",
+          href: `/api/actions/donate-sol?amount=0.01`,
+        },
+        {
+          type: "transaction",
+          label: "0.1 SOL",
+          href: `/api/actions/donate-sol?amount=0.1`,
+        },
+        {
+          // Example for a custom input field
+          type: "transaction",
+          label: "Send SOL",
+          href: `/api/actions/donate-sol?amount={amount}`,
+          parameters: [
+            {
+              name: "amount",
+              label: "Enter the amount of SOL to send",
+              type: "number",
+            },
+          ],
+        },
+      ],
+    },
+  };
+
+  // Return the response with proper headers
+  return new Response(JSON.stringify(response), {
+    status: 200,
+    headers,
+  });
+};
+
+// POST endpoint handles the actual transaction creation
 export const POST = async (req: Request) => {
   try {
-    const requestUrl = new URL(req.url);
-    const { amount, toPubkey } = validatedQueryParams(requestUrl);
-
-    const body: ActionPostRequest = await req.json();
-
-    // validate the client provided input
-    let account: PublicKey;
-    try {
-      account = new PublicKey(body.account);
-    } catch (err) {
-      return new Response('Invalid "account" provided', {
-        status: 400,
-        headers,
-      });
+    // Check if the donation wallet address is set
+    if (!donationWallet) {
+      throw new Error("Please add DONATION_WALLET_ADDRESS to your .env file");
     }
 
-    const connection = new Connection(process.env.SOLANA_RPC! || clusterApiUrl("devnet"));
+    // Step 1:Extract parameters from the URL
+    const url = new URL(req.url);
 
-    // ensure the receiving account will be rent exempt
-    const minimumBalance = await connection.getMinimumBalanceForRentExemption(
-      0 // note: simple accounts that just store native SOL have `0` bytes of data
+    // Amount of SOL to transfer is passed in the URL
+    const amount = Number(url.searchParams.get("amount"));
+
+    // Payer public key is passed in the request body
+    const request: ActionPostRequest = await req.json();
+    const payer = new PublicKey(request.account);
+
+    // Receiver is the donation wallet address
+    const receiver = new PublicKey(donationWallet);
+
+    // Step 2: Prepare the transaction
+    const transaction = await prepareTransaction(
+      connection,
+      payer,
+      receiver,
+      amount
     );
-    if (amount * LAMPORTS_PER_SOL < minimumBalance) {
-      throw `account may not be rent exempt: ${toPubkey.toBase58()}`;
-    }
 
-    // create an instruction to transfer native SOL from one wallet to another
-    const transferSolInstruction = SystemProgram.transfer({
-      fromPubkey: account,
-      toPubkey: toPubkey,
-      lamports: amount * LAMPORTS_PER_SOL,
-    });
+    // Step 3: Create a response with the serialized transaction
+    const response: ActionPostResponse = {
+      type: "transaction",
+      transaction: Buffer.from(transaction.serialize()).toString("base64"),
+    };
 
-    // get the latest blockhash amd block height
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+    // Return the response with proper headers
+    return Response.json(response, { status: 200, headers });
+  } catch (error) {
+    // Log and return an error response
+    console.error("Error processing request:", error);
 
-    // create a legacy transaction
-    const transaction = new Transaction({
-      feePayer: account,
-      blockhash,
-      lastValidBlockHeight,
-    }).add(transferSolInstruction);
+    // Error message
+    const message =
+      error instanceof Error ? error.message : "Internal server error";
 
-    // versioned transactions are also supported
-    // const transaction = new VersionedTransaction(
-    //   new TransactionMessage({
-    //     payerKey: account,
-    //     recentBlockhash: blockhash,
-    //     instructions: [transferSolInstruction],
-    //   }).compileToV0Message(),
-    //   // note: you can also use `compileToLegacyMessage`
-    // );
+    // Wrap message in an ActionError object so it can be shown in the Blink UI
+    const errorResponse: ActionError = {
+      message,
+    };
 
-    const payload: ActionPostResponse = await createPostResponse({
-      fields: {
-        type: "transaction",
-        transaction,
-        message: `Sent ${amount} SOL to Alice: ${toPubkey.toBase58()}`,
-      },
-      // note: no additional signers are needed
-      // signers: [],
-    });
-
-    return Response.json(payload, {
-      headers,
-    });
-  } catch (err) {
-    console.log(err);
-    let message = "An unknown error occurred";
-    if (typeof err == "string") message = err;
-    return new Response(message, {
-      status: 400,
+    return new Response(JSON.stringify(errorResponse), {
+      status: 500,
       headers,
     });
   }
 };
 
-function validatedQueryParams(requestUrl: URL) {
-  let toPubkey: PublicKey = new PublicKey("DAhS7No6mzrxViz8CVUjMRVq7HjESMwEdbHa2gjPXogH");
-  let amount: number = 0.1;
+const prepareTransaction = async (
+  connection: Connection,
+  payer: PublicKey,
+  receiver: PublicKey,
+  amount: number
+) => {
+  // Create a transfer instruction
+  const instruction = SystemProgram.transfer({
+    fromPubkey: payer,
+    toPubkey: new PublicKey(receiver),
+    lamports: amount * LAMPORTS_PER_SOL,
+  });
 
-  try {
-    if (requestUrl.searchParams.get("to")) {
-      toPubkey = new PublicKey(requestUrl.searchParams.get("to")!);
-    }
-  } catch (err) {
-    throw "Invalid input query parameter: to";
-  }
+  // Get the latest blockhash
+  const { blockhash } = await connection.getLatestBlockhash();
 
-  try {
-    if (requestUrl.searchParams.get("amount")) {
-      amount = parseFloat(requestUrl.searchParams.get("amount")!);
-    }
+  // Create a transaction message
+  const message = new TransactionMessage({
+    payerKey: payer,
+    recentBlockhash: blockhash,
+    instructions: [instruction],
+  }).compileToV0Message();
 
-    if (amount <= 0) throw "amount is too small";
-  } catch (err) {
-    throw "Invalid input query parameter: amount";
-  }
-
-  return {
-    amount,
-    toPubkey,
-  };
-}
+  // Create and return a versioned transaction
+  return new VersionedTransaction(message);
+};
