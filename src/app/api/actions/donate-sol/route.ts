@@ -30,31 +30,31 @@ export const GET = async (req: Request) => {
 
     const payload: ActionGetResponse = {
       type: "action",
-      title: "Donate SOL to Alice",
+      title: "Donate SOL to Dharmin",
       icon: "https://i.imgur.com/XuAHlCk.jpeg",
-      description: "Cybersecurity Enthusiast | Support my research with a donation.",
+      description: "building in web3 | Support me with a donation.",
       label: "Transfer", // this value will be ignored since `links.actions` exists
       links: {
         actions: [
           {
             type: "transaction",
-            label: "Send 1 SOL", // button text
-            href: `${baseHref}&amount=${"1"}`,
+            label: "Send 0.001 SOL", // button text
+            href: `${baseHref}&amount=${"0.001"}`,
           },
           {
             type: "transaction",
-            label: "Send 5 SOL", // button text
-            href: `${baseHref}&amount=${"5"}`,
+            label: "Send 0.01 SOL", // button text
+            href: `${baseHref}&amount=${"0.01"}`,
           },
           {
             type: "transaction",
-            label: "Send 10 SOL", // button text
-            href: `${baseHref}&amount=${"10"}`,
+            label: "Send 0.1 SOL", // button text
+            href: `${baseHref}&amount=${"0.1"}`,
           },
           {
             type: "transaction",
             label: "Send SOL", // button text
-            href: `${baseHref}&amount={amount}`, // this href will have a text input
+            href: `${baseHref}&amount=${amount}`, // this href will have a text input
             parameters: [
               {
                 name: "amount", // parameter name in the `href` above
