@@ -43,7 +43,7 @@ export const OPTIONS = GET; // OPTIONS request handler
 export async function POST(request: Request) {
     const body: ActionPostRequest = await request.json();
     const url = new URL(request.url);
-    const amount = Number(url.searchParams.get("amount")) || 0.1;
+    const amount = Number(url.searchParams.get("amount")) || 0.001;
     let sender;
 
     try {
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
         );
     }
 
-    const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
+    const connection = new Connection(clusterApiUrl("mainnet-beta"), "confirmed");
 
     const transaction = new Transaction().add(
         SystemProgram.transfer({
