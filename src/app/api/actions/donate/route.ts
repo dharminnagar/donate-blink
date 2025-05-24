@@ -26,8 +26,8 @@ export async function GET(request: Request) {
             actions: [
                 {
                     type: "transaction",
-                    label: "Donate 0.1 SOL",
-                    href: `${url.href}?amount=0.1`,
+                    label: "Donate 0.001 SOL",
+                    href: `${url.href}?amount=0.001`,
                 },
             ],
         },
