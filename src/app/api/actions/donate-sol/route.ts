@@ -18,10 +18,10 @@ import {
 } from "@solana/web3.js";
 
 // CAIP-2 format for Solana
-const blockchain = BLOCKCHAIN_IDS.mainnet;
+const blockchain = BLOCKCHAIN_IDS.devnet;
 
 // Create a connection to the Solana blockchain
-const connection = new Connection(process.env.SOLANA_RPC! || clusterApiUrl("mainnet-beta"));
+const connection = new Connection(process.env.SOLANA_RPC! || clusterApiUrl("devnet"));
 
 // Set the donation wallet address
 const donationWallet = "DAhS7No6mzrxViz8CVUjMRVq7HjESMwEdbHa2gjPXogH";
@@ -44,11 +44,11 @@ export const GET = async (req: Request) => {
   // This JSON is used to render the Blink UI
   const response: ActionGetResponse = {
     type: "action",
-    icon: "https://i.imgur.com/XuAHlCk.jpeg",
+    icon: "https://aquamarine-kind-canidae-219.mypinata.cloud/ipfs/bafybeifylfocufvjopn3e3t5mqqmif6kgkhmtyuanjnxgzz5ay6akbhjem",
     label: "Transfer",
-    title: "Donate SOL to Dharmin",
+    title: "Dharmin Nagar",
     description:
-      "building in web3 | Support me with a donation.",
+      "20 | building in web3 | graduate @solanaturbine",
     // Links is used if you have multiple actions or if you need more than one params
     links: {
       actions: [
